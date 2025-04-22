@@ -1,4 +1,5 @@
-import type { Config } from "tailwindcss";
+import { Config } from "tailwindcss";
+import { fontFamily } from "tailwindcss/defaultTheme";
 
 export default {
 	darkMode: ["class"],
@@ -91,11 +92,22 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				"ken-burns": {
+					"0%": { transform: "scale(1) translate(0, 0)" },
+					"50%": { transform: "scale(1.1) translate(-1%, -1%)" },
+					"100%": { transform: "scale(1) translate(0, 0)" }
+				},
+				"text-float": {
+					"0%, 100%": { transform: "translateY(0)" },
+					"50%": { transform: "translateY(-5px)" }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				"ken-burns": "ken-burns 20s ease infinite alternate",
+				"text-float": "text-float 3s ease infinite"
 			}
 		}
 	},
