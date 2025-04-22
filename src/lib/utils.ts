@@ -1,4 +1,3 @@
-
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { LyricLine } from "./types";
@@ -69,4 +68,34 @@ export function debounce<T extends (...args: any[]) => any>(
       func(...args);
     }, wait);
   };
+}
+
+// Parse SRT time format (00:00:00,000) to milliseconds
+export function parseSrtTime(timeString: string): number {
+  const [hours, minutes, seconds] = timeString.split(':');
+  const [secs, ms] = seconds.split(',');
+  
+  return (
+    parseInt(hours) * 3600000 +
+    parseInt(minutes) * 60000 +
+    parseInt(secs) * 1000 +
+    parseInt(ms)
+  );
+}
+
+// Parse SRT file content to LyricLine[] format
+export function parseSrtFile(srtContent: string): LyricLine[] {
+  const lines = srtContent.trim().split('\n\n');
+  
+  return lines.map((block) => {
+    const [, timing, ...textLines] = block.split('\n');
+    const [startTime, endTime] = timing.split(' --> ');
+    
+    return {
+      id: generateId(),
+      text: textLines.join(' ').trim(),
+      startTime: parseSrtTime(startTime.trim()),
+      endTime: parseSrtTime(endTime.trim()),
+    };
+  });
 }
