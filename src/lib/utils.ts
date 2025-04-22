@@ -1,3 +1,4 @@
+
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { LyricLine } from "./types";
@@ -72,30 +73,89 @@ export function debounce<T extends (...args: any[]) => any>(
 
 // Parse SRT time format (00:00:00,000) to milliseconds
 export function parseSrtTime(timeString: string): number {
-  const [hours, minutes, seconds] = timeString.split(':');
-  const [secs, ms] = seconds.split(',');
-  
-  return (
-    parseInt(hours) * 3600000 +
-    parseInt(minutes) * 60000 +
-    parseInt(secs) * 1000 +
-    parseInt(ms)
-  );
+  try {
+    // Handle both comma and period as decimal separators
+    const sanitizedTimeString = timeString.replace(',', '.');
+    
+    // Split into hours, minutes, and seconds
+    const [timeSegment] = sanitizedTimeString.split(' '); // In case there are spaces
+    const [hours, minutes, secondsWithMs] = timeSegment.split(':');
+    
+    if (!hours || !minutes || !secondsWithMs) {
+      console.error('Invalid SRT time format:', timeString);
+      return 0;
+    }
+    
+    // Split seconds and milliseconds
+    const [secs, ms] = secondsWithMs.includes('.')
+      ? secondsWithMs.split('.')
+      : [secondsWithMs, '0'];
+    
+    // Convert everything to milliseconds
+    return (
+      parseInt(hours) * 3600000 +
+      parseInt(minutes) * 60000 +
+      parseInt(secs) * 1000 +
+      parseInt(ms.padEnd(3, '0').substring(0, 3))
+    );
+  } catch (error) {
+    console.error('Error parsing SRT time:', timeString, error);
+    return 0;
+  }
 }
 
 // Parse SRT file content to LyricLine[] format
 export function parseSrtFile(srtContent: string): LyricLine[] {
-  const lines = srtContent.trim().split('\n\n');
-  
-  return lines.map((block) => {
-    const [, timing, ...textLines] = block.split('\n');
-    const [startTime, endTime] = timing.split(' --> ');
+  try {
+    console.log('Starting SRT parse of content length:', srtContent.length);
     
-    return {
-      id: generateId(),
-      text: textLines.join(' ').trim(),
-      startTime: parseSrtTime(startTime.trim()),
-      endTime: parseSrtTime(endTime.trim()),
-    };
-  });
+    // Split the content by double newlines to get each subtitle block
+    const blocks = srtContent.trim().split(/\r?\n\r?\n/);
+    console.log('Found blocks:', blocks.length);
+    
+    return blocks
+      .map((block, index) => {
+        // Split each block into lines
+        const lines = block.split(/\r?\n/);
+        console.log(`Block ${index} has ${lines.length} lines`);
+        
+        // First line is the number, second line is the timing
+        if (lines.length < 3) {
+          console.log(`Skipping block ${index} - not enough lines`);
+          return null;
+        }
+        
+        // Find the timing line (usually the second line)
+        const timingLineIndex = lines.findIndex(line => line.includes('-->'));
+        if (timingLineIndex === -1) {
+          console.log(`Skipping block ${index} - no timing found`);
+          return null;
+        }
+        
+        const timingLine = lines[timingLineIndex];
+        const [startTime, endTime] = timingLine.split('-->').map(t => t.trim());
+        
+        // Get all lines after the timing line as the text content
+        const textLines = lines.slice(timingLineIndex + 1);
+        const text = textLines.join(' ').trim();
+        
+        if (!text) {
+          console.log(`Skipping block ${index} - empty text`);
+          return null;
+        }
+        
+        console.log(`Parsed block ${index}: ${startTime} --> ${endTime}: "${text}"`);
+        
+        return {
+          id: generateId(),
+          text,
+          startTime: parseSrtTime(startTime),
+          endTime: parseSrtTime(endTime)
+        };
+      })
+      .filter(line => line !== null) as LyricLine[];
+  } catch (error) {
+    console.error('Error parsing SRT file:', error);
+    return [];
+  }
 }
